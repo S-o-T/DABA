@@ -14,6 +14,7 @@
 #include <sfm/utils/utils-inl.cuh>
 #include <thrust/async/for_each.h>
 #include <thrust/device_vector.h>
+#include <thrust/iterator/constant_iterator.h>
 
 namespace sfm {
 namespace utils {

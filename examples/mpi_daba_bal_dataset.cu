@@ -237,7 +237,7 @@ int main(int argc, char *argv[]) {
                   << time_optim_max << "/" << std::setprecision(4) << std::fixed
                   << time << " seconds: " << std::scientific
                   << std::setprecision(25)
-                  << total_cost / ba_dataset->Measurements().size()
+                  << total_cost /// ba_dataset->Measurements().size()
                   << std::endl;
       }
       records.push_back({time_optim_max, time_optim_avg, time, total_cost});

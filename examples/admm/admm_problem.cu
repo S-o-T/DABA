@@ -33,6 +33,9 @@
 
 #include <examples/admm/admm_problem.h>
 
+#include <thrust/sequence.h>
+#include <thrust/execution_policy.h>
+
 namespace sfm {
 namespace ba {
 template <typename T>

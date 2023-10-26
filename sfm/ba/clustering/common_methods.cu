@@ -15,6 +15,8 @@
 #include <sfm/types.h>
 #include <sfm/utils/utils.cuh>
 
+#include <cuda/functional>
+
 namespace sfm {
 namespace ba {
 namespace clustering {
@@ -1049,7 +1051,7 @@ void DecomposeAndMergeLargeCluster(
       handle.GetThrustPolicy(), sfm::utils::MakeCountingIterator<Vertex>(0),
       sfm::utils::MakeCountingIterator<Vertex>(targeted_number_of_clusters),
       [cluster_self_weights, cluster_scores] __device__(auto cluster1,
-                                                        auto cluster2) {
+                                                        auto cluster2) -> bool {
         auto cluster_score1 = cluster_scores[cluster1];
         auto cluster_score2 = cluster_scores[cluster2];
         return cluster_score1 != cluster_score2
@@ -1069,7 +1071,7 @@ void DecomposeAndMergeLargeCluster(
                       sfm::utils::MakeCountingIterator(0),
                       sfm::utils::MakeCountingIterator(number_of_vertices),
                       selected_vertices_v.data(),
-                      [clusters, cluster_out] __device__(Vertex vertex) {
+                      [clusters, cluster_out] __device__(Vertex vertex) -> bool {
                         return clusters[vertex] == cluster_out;
                       }) -
       selected_vertices_v.data();
@@ -1085,7 +1087,7 @@ void DecomposeAndMergeLargeCluster(
       [selected_vertices = selected_vertices_v.data().get(),
        selected_vertex_indices = selected_vertex_indices_v.data().get(),
        selected_vertex_scores = selected_vertex_scores_v.data().get(),
-       vertex_scores] __device__(auto idx) {
+       vertex_scores] __device__(auto idx) -> void {
         auto vertex = selected_vertices[idx];
         selected_vertex_scores[idx] = vertex_scores[vertex];
         selected_vertex_indices[vertex] = idx;
@@ -1100,7 +1102,7 @@ void DecomposeAndMergeLargeCluster(
   Size number_of_selected_edges =
       thrust::copy_if(handle.GetThrustPolicy(), edge_begin, edge_end,
                       selected_edge_begin,
-                      [cluster_out, clusters] __device__(auto edge) {
+                      [cluster_out, clusters] __device__(auto edge) -> bool {
                         return clusters[thrust::get<0>(edge)] == cluster_out &&
                                clusters[thrust::get<1>(edge)] == cluster_out;
                       }) -
@@ -1115,7 +1117,7 @@ void DecomposeAndMergeLargeCluster(
       [selected_src_indices = selected_src_indices_v.data().get(),
        selected_dst_indices = selected_dst_indices_v.data().get(),
        selected_vertex_indices =
-           selected_vertex_indices_v.data().get()] __device__(auto idx) {
+           selected_vertex_indices_v.data().get()] __device__(auto idx) -> void {
         auto src = selected_src_indices[idx];
         auto dst = selected_dst_indices[idx];
         selected_src_indices[idx] = selected_vertex_indices[src];
@@ -1173,7 +1175,7 @@ void DecomposeAndMergeLargeCluster(
           number_of_selected_vertex_clusters),
       [self_weights = selected_vertex_cluster_self_weights_v.data().get(),
        scores = selected_vertex_cluster_scores_v.data()
-                    .get()] __device__(auto cluster1, auto cluster2) {
+                    .get()] __device__(auto cluster1, auto cluster2) -> bool {
         auto weight1 = self_weights[cluster1];
         auto weight2 = self_weights[cluster2];
         auto score1 = scores[cluster1];
@@ -1204,7 +1206,7 @@ void DecomposeAndMergeLargeCluster(
              selected_vertex_clusters = selected_vertex_clusters_v.data().get(),
              selected_vertex_cluster_out, selected_vertex_cluster_score_out,
              max_cluster_score, cluster_scores,
-             targeted_number_of_clusters] __device__(auto edge) {
+             targeted_number_of_clusters] __device__(auto edge) -> bool {
               Vertex cluster = thrust::get<0>(edge);
               Vertex vertex = thrust::get<1>(edge);
 
@@ -1248,9 +1250,10 @@ void DecomposeAndMergeLargeCluster(
           sfm::utils::MakeCountingIterator<Vertex>(
               number_of_targeted_clusters_in),
           Vertex(0),
+          cuda::proclaim_return_type<size_t>(
           [targeted_clusters_in = targeted_clusters_in_v.data().get(),
            targeted_cluster_weights = targeted_cluster_weights_v.data().get(),
-           cluster_scores] __device__(auto index1, auto index2) {
+           cluster_scores] __device__(size_t index1, size_t index2) {
             Weight weight1 = targeted_cluster_weights[index1];
             Weight weight2 = targeted_cluster_weights[index2];
 
@@ -1270,7 +1273,7 @@ void DecomposeAndMergeLargeCluster(
                 return index2;
               }
             }
-          })];
+          }))];
     } else {
       Size number_of_targeted_clusters_in =
           thrust::copy_if(handle.GetThrustPolicy(),
@@ -1279,7 +1282,7 @@ void DecomposeAndMergeLargeCluster(
                               targeted_number_of_clusters),
                           targeted_clusters_in_v.data(),
                           [selected_vertex_cluster_score_out, max_cluster_score,
-                           cluster_scores] __device__(auto cluster) {
+                           cluster_scores] __device__(auto cluster) -> bool {
                             return cluster_scores[cluster] +
                                        selected_vertex_cluster_score_out <=
                                    max_cluster_score;
@@ -1290,7 +1293,7 @@ void DecomposeAndMergeLargeCluster(
           handle.GetThrustPolicy(), targeted_clusters_in_v.begin(),
           targeted_clusters_in_v.end(),
           [cluster_scores, cluster_self_weights] __device__(auto cluster1,
-                                                            auto cluster2) {
+                                                            auto cluster2) -> bool {
             auto cluster_score1 = cluster_scores[cluster1];
             auto cluster_score2 = cluster_scores[cluster2];
             return cluster_score1 != cluster_score2
@@ -1307,7 +1310,7 @@ void DecomposeAndMergeLargeCluster(
           selected_vertices_v.end(), merged_vertices,
           [selected_vertex_indices = selected_vertex_indices_v.data().get(),
            selected_vertex_clusters = selected_vertex_clusters_v.data().get(),
-           selected_vertex_cluster_out] __device__(auto vertex) {
+           selected_vertex_cluster_out] __device__(auto vertex) -> bool {
             return selected_vertex_clusters[selected_vertex_indices[vertex]] ==
                    selected_vertex_cluster_out;
           }) -

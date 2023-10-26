@@ -18,7 +18,10 @@
 #include <cuda_runtime.h>
 #include <mpi.h>
 #include <thrust/async/reduce.h>
-#include <thrust/system/cuda/experimental/pinned_allocator.h>
+#include <thrust/system/cuda/memory_resource.h>
+template <typename T>
+using pinned_allocator = thrust::mr::stateless_resource_allocator<T, thrust::system::cuda::universal_host_pinned_memory_resource >;
+
 
 namespace sfm {
 enum Memory { kCPU = 0, kGPU = 1 };
@@ -81,7 +84,7 @@ enum SolverStatus {
 
 template <typename T>
 using PinnedHostVector =
-    std::vector<T, thrust::system::cuda::experimental::pinned_allocator<T>>;
+    std::vector<T, pinned_allocator<T>>;
 
 struct SquaredSum {
   template <typename T>

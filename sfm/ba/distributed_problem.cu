@@ -32,6 +32,8 @@
 #include <sfm/utils/utils.cuh>
 #include <sfm/utils/utils.h>
 
+#include <thrust/sort.h>
+
 namespace sfm {
 namespace ba {
 template <typename T>

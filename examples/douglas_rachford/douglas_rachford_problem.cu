@@ -31,6 +31,9 @@
 
 #include <examples/douglas_rachford/douglas_rachford_problem.h>
 
+#include <thrust/sequence.h>
+#include <thrust/execution_policy.h>
+
 namespace sfm {
 namespace ba {
 template <typename T>
